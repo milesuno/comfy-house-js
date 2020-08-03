@@ -1,23 +1,31 @@
-// import * as products from "./products.json";
+//TODO: Utilise local storage
+//TODO: Refactor code - elems that do not exist in HTML can be initialised and then set dynamically
+//TOD0: Make styling changes
+//TODO: Upload to Netlify
+//TODO: Split up classes
+//TODO: Create menu class
+//TODO: Create footer
+// FIX: cartTotal bug - weird decimal
 
-// const productContainer = document.querySelector(".product-container");
-// productContainer.innerHTML = for (let product of products) { return `<li>${product.name}</li>`};
-
-// console.log({products, productContainer})
 let cart = [];
+const body = document.querySelector("body");
 const cartOverlayDOM = document.querySelector(".cart-overlay");
 const cartDOM = document.querySelector(".cart");
 const cartBtn = document.querySelector(".cart-btn");
 const cartItemCount = document.querySelector(".cart-items");
 const closeCartBtn = document.querySelector(".close-cart");
 const cartItemContainer = document.querySelector(".cart-item-container");
-let addToCartBtns;
 const productContainer = document.querySelector(".product-container");
 const clearCartBtn = document.querySelector(".clear-cart");
 const cartTotalDOM = document.querySelector(".cart-total");
 
+//Buttons added dynamically
+let addToCartBtns;
+let removeFromCartBtn;
+let upQuantityBtn;
+let downQuantityBtn;
+
 class Product {
-	//TODO: get products
 	static async getProducts() {
 		try {
 			let result = await fetch("./products.json").then((res) =>
@@ -38,13 +46,10 @@ class Product {
 }
 
 class UI {
-	//TODO: Display all products in products.json - create HTML, Append el to parent container
-	displayProducts(products) {
-		// console.log({ products });
-		try {
-			let productsHTML = products
-				.map((product) => {
-					return `
+	static displayPageProducts(products) {
+		let productsHTML = products
+			.map((product) => {
+				return `
                 <li>
                 <article id=${product.id} class="product">
                 <div class="img-container">
@@ -62,14 +67,25 @@ class UI {
                 <h4>£${product.price}</h4>
                 </article>
                 </li>
-                    `;
-				})
-				.join("");
+                `;
+			})
+			.join("");
 
-			productContainer.innerHTML = productsHTML;
-		} catch (err) {
-			console.log(err);
-		}
+		productContainer.innerHTML = productsHTML;
+	}
+
+	static toggleDisableButton() {
+		addToCartBtns.forEach((btn) => {
+			let id = parseInt(btn.dataset.id);
+			let inCart = cart.find((product) => product.id === id);
+			if (inCart) {
+				btn.innerHTML = "In Cart";
+				btn.disable = true;
+			} else {
+				btn.innerHTML = "Add to Bag";
+				btn.disable = true;
+			}
+		});
 	}
 }
 
@@ -79,25 +95,20 @@ class Menu {
 }
 
 class Cart {
-	//TODO: create show cart function
-	showCart() {
+	static showCart() {
 		cartOverlayDOM.classList.add("transparentBcg");
 		cartDOM.classList.add("showCart");
 	}
 
-	//TODO: create hide cart function
-	hideCart() {
+	static hideCart() {
 		cartOverlayDOM.classList.remove("transparentBcg");
 		cartDOM.classList.remove("showCart");
 	}
 
-	//TODO: Display all products in Cart
-	static displayProducts() {
-		// if (!product) return;
-		try {
-			let productHTML = cart
-				.map((product) => {
-					return `
+	static displayCartProducts() {
+		let productHTML = cart
+			.map((product) => {
+				return `
                     <div id=${product.id} class="cart-item">
                     <img src="${product.img}" alt="product" />
                     <div class="product-details">
@@ -112,78 +123,65 @@ class Cart {
                 </div>
                 </div>
                 `;
-				})
-				.join("");
-			cartItemContainer.innerHTML = productHTML;
-		} catch (err) {
-			console.log(err);
-		}
-		// removeFromCartBtn.addEventListener("click", Cart.removeFromCart);
+			})
+			.join("");
+		cartItemContainer.innerHTML = productHTML;
 	}
 
-	//TODO: create add to cart function
 	static addToCart(e) {
-		//FIX: update button CSS so show item is in basket
 		Product.getProducts().then((products) => {
-			addToCartBtns.forEach((btn) => {
-				btn.innerHTML = "In Cart";
-				btn.disable = true;
-			});
+			let productID = parseInt(e.target.dataset.id);
+			let product = {
+				...products.find((product) => product.id === productID),
+				amount: 1,
+			};
 
-			let product = products.filter(
-				(product) => product.id === parseInt(e.target.dataset.id)
-			)[0];
-			product.amount = 1;
-			console.log({ products, product });
+			let inCart = cart.find((product) => product.id === productID);
 
-			if (cart.length === 0) cart.push(product);
-
-			if (!cart.some((cartProduct) => cartProduct.id === product.id))
-				cart.push(product);
+			if (!inCart) cart.push(product);
 
 			Cart.setCartValues();
-			Cart.displayProducts();
+			Cart.displayCartProducts();
+			Storage.setCartProducts();
+			UI.toggleDisableButton();
 		});
 	}
-	//TODO: create remove from cart function
 	static removeFromCart(e) {
 		cart = cart.filter(
 			(product) => product.id !== parseInt(e.target.dataset.id)
-        );
-        Cart.setCartValues();
-		Cart.displayProducts();
+		);
+		Cart.setCartValues();
+		Cart.displayCartProducts();
+		Storage.setCartProducts();
+		UI.toggleDisableButton();
 	}
-	//TODO: create increase/decrease quantity function
 	static increaseProductQuantity(e) {
 		console.log("increase");
 		let productID = parseInt(e.target.parentNode.parentNode.id);
-		//find product in cart
-		let product = cart.filter((product) => product.id === productID)[0];
-		let index = cart.indexOf(product);
+		let product = cart.find((product) => product.id === productID);
+		let index = cart.findIndex((product) => product.id === productID);
 		product.amount++;
 		product = product;
 		cart[index] = product;
 
 		Cart.setCartValues();
-		Cart.displayProducts();
+		Cart.displayCartProducts();
 	}
 
 	static decreaseProductQuantity(e) {
 		console.log("decrease");
 		let productID = parseInt(e.target.parentNode.parentNode.id);
-		//find product in cart
-		let product = cart.filter((product) => product.id === productID)[0];
-		let index = cart.indexOf(product);
-        
-        if (product.amount > 1) product.amount--;
+		let product = cart.find((product) => product.id === productID);
+		let index = cart.findIndex((product) => product.id === productID);
+
+		if (product.amount > 1) product.amount--;
 		product = product;
 		cart[index] = product;
 
 		Cart.setCartValues();
-		Cart.displayProducts();
+		Cart.displayCartProducts();
 	}
 
-	//TODO: create total cart function
 	static setCartValues() {
 		cartItemCount.innerHTML = cart.reduce((a, c) => {
 			return a + c.amount;
@@ -197,81 +195,73 @@ class Cart {
 				.toFixed(2)
 		);
 	}
-	//TDO: create clear cart function
 	static clearCart() {
 		cart = [];
-		Cart.displayProducts();
+		Cart.setCartValues();
+		Cart.displayCartProducts();
+		Storage.clearLs();
 	}
 }
 
 class Storage {
-	//TODO: Add cart items to ls
-	//TODO: Get cart items from ls
-	//TODO: Clear cart items from ls
+	static setCartProducts() {
+		localStorage.setItem("products", JSON.stringify(cart));
+	}
+	static getCartProducts() {
+		cart = JSON.parse(localStorage.getItem("products")) || [];
+	}
+
+	static clearLs() {
+		localStorage.clear();
+	}
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-	let products = new Product();
-	let ui = new UI();
-	let cart = new Cart();
+	if (localStorage.getItem("products")) {
+		Storage.getCartProducts();
+		Cart.setCartValues();
+		Cart.displayCartProducts();
+	}
 
-	Cart.displayProducts();
-	products = Product.getProducts().then((products) =>
-		ui.displayProducts(products)
-	);
+	Cart.displayCartProducts();
+	Product.getProducts().then((products) => {
+		UI.displayPageProducts(products);
+	});
+	cartBtn.addEventListener("click", Cart.showCart);
 
-	productContainer.addEventListener(
-		"click",
-		(e) => {
-			if (e.currentTarget.hasChildNodes) {
-				addToCartBtns = document.querySelectorAll(".bag-btn");
+	closeCartBtn.addEventListener("click", Cart.hideCart);
 
-				for (let btn of addToCartBtns)
-					btn.addEventListener("click", Cart.addToCart);
-				// console.log({ addToCartBtns });
-			}
-		},
-		true
-	);
-
-	cartItemContainer.addEventListener(
-		"click",
-		(e) => {
-			if (e.currentTarget.hasChildNodes) {
-				let removeFromCartBtn = document.querySelectorAll(
-					".remove-item"
-				);
-				let upQuantityBtn = document.querySelectorAll(
-					"i.fas.fa-chevron-up"
-				);
-				let downQuantityBtn = document.querySelectorAll(
-					"i.fas.fa-chevron-down"
-				);
-				console.log({ removeFromCartBtn });
-
-				removeFromCartBtn.forEach((btn) =>
-					btn.addEventListener("click", Cart.removeFromCart)
-				);
-				upQuantityBtn.forEach((btn) =>
-					btn.addEventListener("click", Cart.increaseProductQuantity)
-				);
-				downQuantityBtn.forEach((btn) =>
-					btn.addEventListener("click", Cart.decreaseProductQuantity)
-				);
-			}
-		},
-		true
-	);
+	clearCartBtn.addEventListener("click", Cart.clearCart);
 });
 
-cartBtn.addEventListener("click", () => {
-	let cart = new Cart();
-	cart.showCart();
-});
+productContainer.addEventListener(
+	"load",
+	() => {
+		addToCartBtns = document.querySelectorAll(".bag-btn");
 
-closeCartBtn.addEventListener("click", () => {
-	let cart = new Cart();
-	cart.hideCart();
-});
+		for (let btn of addToCartBtns)
+			btn.addEventListener("click", Cart.addToCart);
+		UI.toggleDisableButton();
+	},
+	true
+);
 
-clearCartBtn.addEventListener("click", Cart.clearCart);
+cartItemContainer.addEventListener(
+	"load",
+	() => {
+		removeFromCartBtn = document.querySelectorAll(".remove-item");
+		upQuantityBtn = document.querySelectorAll("i.fas.fa-chevron-up");
+		downQuantityBtn = document.querySelectorAll("i.fas.fa-chevron-down");
+
+		removeFromCartBtn.forEach((btn) =>
+			btn.addEventListener("click", Cart.removeFromCart)
+		);
+		upQuantityBtn.forEach((btn) =>
+			btn.addEventListener("click", Cart.increaseProductQuantity)
+		);
+		downQuantityBtn.forEach((btn) =>
+			btn.addEventListener("click", Cart.decreaseProductQuantity)
+		);
+	},
+	true
+);
