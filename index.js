@@ -1,7 +1,7 @@
-//TODO: Utilise local storage
-//TODO: Refactor code - elems that do not exist in HTML can be initialised and then set dynamically
-//TOD0: Make styling changes
+
 //TODO: Upload to Netlify
+//TODO: Add Nav buttons - set display none for mobile
+//TODO: Nav buttons filter products on page 
 //TODO: Split up classes
 //TODO: Create menu class
 //TODO: Create footer
@@ -9,6 +9,7 @@
 
 let cart = [];
 const body = document.querySelector("body");
+const nav = document.querySelector(".navbar");
 const cartOverlayDOM = document.querySelector(".cart-overlay");
 const cartDOM = document.querySelector(".cart");
 const cartBtn = document.querySelector(".cart-btn");
@@ -265,3 +266,11 @@ cartItemContainer.addEventListener(
 	},
 	true
 );
+
+document.addEventListener("scroll", () => {
+	if (window.scrollY > window.innerHeight * 0.66) {
+		nav.classList.add("box-shadow");
+	} else {
+		nav.classList.remove("box-shadow");
+	}
+});
